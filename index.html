@@ -36,4 +36,120 @@ function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setT
 $('messageForm').onsubmit=e=>{e.preventDefault();const text=$('messageInput').value.trim();const c=chatById(activeId);if(!text||!c)return;c.messages.push({from:'me',text,time:timeNow()});$('messageInput').value='';save();renderMessages();};$('back').onclick=backHome;$('chatInfo').onclick=()=>{const c=chatById(activeId);if(!c)return;const favorite=!c.favorite;c.favorite=favorite;save();toast(favorite?'Ditambahkan ke Favorit':'Dihapus dari Favorit')};$('search').oninput=renderList;document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));renderList()});document.querySelectorAll('.navitem').forEach(b=>b.onclick=()=>showPage(b.dataset.page));$('fab').onclick=modalOpen;$('newTop').onclick=modalOpen;$('addContact').onclick=modalOpen;$('settingsTop').onclick=()=>showPage('settings');$('cancelModal').onclick=modalClose;$('modalBack').onclick=e=>{if(e.target===$('modalBack'))modalClose()};$('contactForm').onsubmit=e=>{e.preventDefault();const name=$('contactName').value.trim();if(!name)return;if(state.chats.some(c=>c.name.toLowerCase()===name.toLowerCase())){toast('Nama kontak sudah ada.');return}const id='c'+Date.now();state.chats.unshift({id,name,emoji:name[0].toUpperCase(),color:'',favorite:false,unread:0,messages:[{from:'them',text:$('contactMessage').value.trim()||'Percakapan demo dibuat. Kamu bisa mulai mengetik pesan.',time:timeNow()}]});state.contacts.push(id);save();modalClose();showPage('home');openChat(id);toast('Kontak lokal berhasil dibuat')};
 $('profileSetting').onclick=()=>{const n=prompt('Nama tampilan lokal:',localStorage.getItem('tegarchat_name')||'Tegar');if(n&&n.trim()){localStorage.setItem('tegarchat_name',n.trim());$('.welcome h1');document.querySelector('.welcome h1').textContent='Halo, '+n.trim()+' 👋';toast('Nama tampilan diperbarui')}};$('installSetting').onclick=()=>toast('Buka menu ⋮ Chrome lalu pilih “Tambahkan ke layar utama” setelah situs diunggah ke HTTPS.');$('exportSetting').onclick=()=>{const lines=state.chats.map(c=>'## '+c.name+'\n'+c.messages.map(m=>`[${m.time}] ${m.from==='me'?'Saya':c.name}: ${m.text}`).join('\n')).join('\n\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines],{type:'text/plain;charset=utf-8'}));a.download='tegarchat-pesan.txt';a.click();URL.revokeObjectURL(a.href);toast('Ekspor dimulai')};$('resetSetting').onclick=()=>{if(confirm('Hapus semua perubahan demo dan kembalikan chat awal?')){state={chats:starter.map(c=>({...c,messages:c.messages.map(m=>({...m}))})),contacts:[]};save();showPage('home');toast('Data demo direset')}};
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});renderList();
-</script></body></html>
+</script>
+  
+<section id="auth-section" style="max-width:400px;margin:24px auto;padding:20px;border:1px solid #ddd;border-radius:12px;font-family:Arial,sans-serif;">
+  <h2>TegarChat</h2>
+  <p>Masuk atau buat akun baru</p>
+
+  <form id="auth-form">
+    <label for="auth-email">Email</label>
+    <input
+      id="auth-email"
+      type="email"
+      placeholder="Masukkan email"
+      required
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;"
+    >
+
+    <label for="auth-password">Kata sandi</label>
+    <input
+      id="auth-password"
+      type="password"
+      placeholder="Minimal 6 karakter"
+      minlength="6"
+      required
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;"
+    >
+
+    <button type="submit">Login</button>
+    <button type="button" id="register-btn">Daftar Akun</button>
+    <button type="button" id="logout-btn" hidden>Logout</button>
+  </form>
+
+  <p id="auth-message" role="status"></p>
+  <p id="auth-user"></p>
+</section>
+  
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+  import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+    
+   const firebaseConfig = {
+    apiKey: "AIzaSyB52uIvB7i4on8V_HJpQ55VPrNWeCx8uug",
+    authDomain: "tegar-chat-app.firebaseapp.com",
+    projectId: "tegar-chat-app",
+    storageBucket: "tegar-chat-app.firebasestorage.app",
+    messagingSenderId: "477615919686",
+    appId: "1:477615919686:web:afbfb52889dfb3e2a67047"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const authForm = document.getElementById("auth-form");
+  const emailInput = document.getElementById("auth-email");
+  const passwordInput = document.getElementById("auth-password");
+  const registerBtn = document.getElementById("register-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const authMessage = document.getElementById("auth-message");
+  const authUser = document.getElementById("auth-user");
+
+  authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      emailInput.value.trim(),
+      passwordInput.value
+    );
+
+    authMessage.textContent = "Login berhasil!";
+  } catch (error) {
+    authMessage.textContent = "Login gagal: " + error.message;
+  }
+});
+
+   registerBtn.addEventListener("click", async () => {
+  if (!authForm.reportValidity()) return;
+    await createUserWithEmailAndPassword(
+      auth,
+      emailInput.value.trim(),
+      passwordInput.value
+    );
+
+    authMessage.textContent = "Akun berhasil dibuat!";
+  } catch (error) {
+    authMessage.textContent = "Pendaftaran gagal: " + error.message;
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    authMessage.textContent = "Kamu berhasil logout.";
+  } catch (error) {
+    authMessage.textContent = "Logout gagal: " + error.message;
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    authUser.textContent = "Login sebagai: " + user.email;
+    logoutBtn.hidden = false;
+  } else {
+    authUser.textContent = "Kamu belum login.";
+    logoutBtn.hidden = true;
+  }
+});
+   
+</script>
+  
+</body>
+</html>
