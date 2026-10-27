@@ -38,11 +38,50 @@ $('profileSetting').onclick=()=>{const n=prompt('Nama tampilan lokal:',localStor
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});renderList();
 </script>
   
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-  import { getAuth } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+<section id="auth-section" style="max-width:400px;margin:24px auto;padding:20px;border:1px solid #ddd;border-radius:12px;font-family:Arial,sans-serif;">
+  <h2>TegarChat</h2>
+  <p>Masuk atau buat akun baru</p>
 
-  const firebaseConfig = {
+  <form id="auth-form">
+    <label for="auth-email">Email</label>
+    <input
+      id="auth-email"
+      type="email"
+      placeholder="Masukkan email"
+      required
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;"
+    >
+
+    <label for="auth-password">Kata sandi</label>
+    <input
+      id="auth-password"
+      type="password"
+      placeholder="Minimal 6 karakter"
+      minlength="6"
+      required
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;"
+    >
+
+    <button type="submit">Login</button>
+    <button type="button" id="register-btn">Daftar Akun</button>
+    <button type="button" id="logout-btn" hidden>Logout</button>
+  </form>
+
+  <p id="auth-message" role="status"></p>
+  <p id="auth-user"></p>
+</section>
+  
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+  import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+    
+   const firebaseConfig = {
     apiKey: "AIzaSyB52uIvB7i4on8V_HJpQ55VPrNWeCx8uug",
     authDomain: "tegar-chat-app.firebaseapp.com",
     projectId: "tegar-chat-app",
@@ -53,6 +92,63 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigato
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  const authForm = document.getElementById("auth-form");
+  const emailInput = document.getElementById("auth-email");
+  const passwordInput = document.getElementById("auth-password");
+  const registerBtn = document.getElementById("register-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const authMessage = document.getElementById("auth-message");
+  const authUser = document.getElementById("auth-user");
+
+  authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      emailInput.value.trim(),
+      passwordInput.value
+    );
+
+    authMessage.textContent = "Login berhasil!";
+  } catch (error) {
+    authMessage.textContent = "Login gagal: " + error.message;
+  }
+});
+
+   registerBtn.addEventListener("click", async () => {
+  if (!authForm.reportValidity()) return;
+    await createUserWithEmailAndPassword(
+      auth,
+      emailInput.value.trim(),
+      passwordInput.value
+    );
+
+    authMessage.textContent = "Akun berhasil dibuat!";
+  } catch (error) {
+    authMessage.textContent = "Pendaftaran gagal: " + error.message;
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    authMessage.textContent = "Kamu berhasil logout.";
+  } catch (error) {
+    authMessage.textContent = "Logout gagal: " + error.message;
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    authUser.textContent = "Login sebagai: " + user.email;
+    logoutBtn.hidden = false;
+  } else {
+    authUser.textContent = "Kamu belum login.";
+    logoutBtn.hidden = true;
+  }
+});
+   
 </script>
   
 </body>
